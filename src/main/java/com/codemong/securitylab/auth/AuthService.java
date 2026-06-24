@@ -43,10 +43,15 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
-        return LoginResponse.accessOnly(jwtTokenProvider.createAccessToken(user.getEmail()));
+        return LoginResponse.withRefresh(jwtTokenProvider.createAccessToken(user.getEmail()), jwtTokenProvider.createRefreshToken(user.getEmail()));
     }
 
     public TokenResponse refresh(RefreshRequest request) {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Step 04에서 구현하세요.");
+        String email = jwtTokenProvider.getSubjectIfValidRefreshToken(request.refreshToken())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
+        if (!userRepository.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다.");
+        }
+        return new TokenResponse(jwtTokenProvider.createAccessToken(email));
     }
 }
